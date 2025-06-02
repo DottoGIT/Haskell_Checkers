@@ -49,18 +49,17 @@ gameLoop board = do
             clearScreen
             putStrLn "Invalid input, try again."
             gameLoop board
-        Just (from, to) ->
-            if Board.isValidMove board from to
+        Just positions ->
+            if Board.isValidMove board positions
             then do
                 clearScreen
-                let newBoard = Board.applyMove board from to
+                let newBoard = Board.applyMove board positions
                 newBoardAfterAIMove <- AI.makeAIMove newBoard
                 gameLoop newBoardAfterAIMove
             else do
                 clearScreen
                 putStrLn "Invalid move, try again."
                 gameLoop board
-
 
 
 main :: IO ()
