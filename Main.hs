@@ -4,6 +4,7 @@ import qualified GUI
 import qualified Board
 import qualified AI
 
+
 initialBoard :: [[Char]]
 initialBoard =
     [ ['.', '.', '.', '.', '.', '.', '.', '.']
