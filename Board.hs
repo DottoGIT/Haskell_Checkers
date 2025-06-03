@@ -4,6 +4,7 @@ import Data.Char (ord, toUpper, toLower)
 import Data.Maybe (isJust, fromJust)
 import Data.List (find)
 import Debug.Trace (trace)
+import qualified Data.Set as Set
 
 -- Parses input like "A3 B4" or "A3 C5 E3" into list of coordinates
 parseMove :: String -> Maybe [(Int, Int)]
@@ -120,9 +121,11 @@ simpleMovesFrom board piece pos =
 jumpSequencesFrom :: [[Char]] -> Char -> (Int, Int) -> [[(Int, Int)]]
 jumpSequencesFrom board piece pos
   | piece == 'W' || piece == 'B' =
-      let jumps = validJumpsFrom board piece pos
-      in map (\nextPos -> [pos, nextPos]) jumps  -- only single jumps, no recursion
-  | otherwise =
+      let
+          jumps = validJumpsFrom board piece pos
+          sequences = concatMap (\to -> buildSequences board piece pos to Set.empty) jumps
+      in if null sequences then [[pos]] else sequences
+  | otherwise = -- your existing men recursion unchanged
       let jumps = validJumpsFrom board piece pos
       in if null jumps
          then [[pos]]
@@ -134,6 +137,40 @@ jumpSequencesFrom board piece pos
                boardMoved' = setPiece boardMoved nextPos piece
            rest <- jumpSequencesFrom boardMoved' piece nextPos
            return (pos : rest)
+
+-- Helper for queens to recursively build jump sequences
+buildSequences :: [[Char]] -> Char -> (Int, Int) -> (Int, Int) -> Set.Set (Int, Int) -> [[(Int, Int)]]
+buildSequences board piece from to jumped =
+  case findJumpedPiece board piece from to of
+    Nothing -> []  -- invalid jump, no opponent piece to jump over
+    Just jumpedPos ->
+      if Set.member jumpedPos jumped then [] else
+        let
+          jumped' = Set.insert jumpedPos jumped
+          boardAfterJump = removePiece board jumpedPos
+          boardCleared = setPiece boardAfterJump from '.'
+          boardMoved = setPiece boardCleared to piece
+          furtherJumps = validJumpsFrom boardMoved piece to
+        in
+          if null furtherJumps
+          then [[from, to]]
+          else do
+            nextPos <- furtherJumps
+            rest <- buildSequences boardMoved piece to nextPos jumped'
+            return (from : rest)
+
+
+findJumpedPiece :: [[Char]] -> Char -> (Int, Int) -> (Int, Int) -> Maybe (Int, Int)
+findJumpedPiece board player (r1, c1) (r2, c2) =
+  let
+    dr = signum (r2 - r1)
+    dc = signum (c2 - c1)
+    positions = takeWhile (/= (r2, c2)) $ tail $ iterate (\(r,c) -> (r + dr, c + dc)) (r1, c1)
+    opponentPositions = filter (\pos -> opponentPiece (boardPiece board pos) player) positions
+  in case opponentPositions of
+       [pos] -> Just pos  -- exactly one opponent piece must be jumped
+       _     -> Nothing   -- invalid or no opponent pieces jumped
+
 
 
 -- Valid jumps from a position: sliding jumps only for kings, normal pieces jump two steps
@@ -169,6 +206,7 @@ flyingJumpsInDirection board player (r, c) (dr, dc) = search (r + dr, c + dc) No
             pieceAtPos
               | opponentPiece pieceAtPos player && maybeOpponent == Nothing -> search (rr + dr, cc + dc) (Just pos) foundSquares
               | otherwise -> []
+
 
 
 
