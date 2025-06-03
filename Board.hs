@@ -3,6 +3,7 @@ module Board (parseMove, isValidMove, applyMove, possibleMoves, boardPiece, vali
 import Data.Char (ord, toUpper, toLower)
 import Data.Maybe (isJust, fromJust)
 import Data.List (find)
+import Debug.Trace (trace)
 
 -- Parses input like "A3 B4" or "A3 C5 E3" into list of coordinates
 parseMove :: String -> Maybe [(Int, Int)]
@@ -117,23 +118,27 @@ simpleMovesFrom board piece pos =
 
 -- Recursively find all jump sequences from position, returns list of sequences of positions
 jumpSequencesFrom :: [[Char]] -> Char -> (Int, Int) -> [[(Int, Int)]]
-jumpSequencesFrom board piece pos =
-    let jumps = validJumpsFrom board piece pos
-    in if null jumps
-       then [[pos]]
-       else do
-         nextPos <- jumps
-         let jumpedPos = middle pos nextPos
-             boardAfterJump = removePiece board jumpedPos
-             boardMoved = setPiece boardAfterJump pos '.' 
-             boardMoved' = setPiece boardMoved nextPos piece
-         rest <- jumpSequencesFrom boardMoved' piece nextPos
-         return (pos : rest)
+jumpSequencesFrom board piece pos
+  | piece == 'W' || piece == 'B' =
+      let jumps = validJumpsFrom board piece pos
+      in map (\nextPos -> [pos, nextPos]) jumps  -- only single jumps, no recursion
+  | otherwise =
+      let jumps = validJumpsFrom board piece pos
+      in if null jumps
+         then [[pos]]
+         else do
+           nextPos <- jumps
+           let jumpedPos = middle pos nextPos
+               boardAfterJump = removePiece board jumpedPos
+               boardMoved = setPiece boardAfterJump pos '.'
+               boardMoved' = setPiece boardMoved nextPos piece
+           rest <- jumpSequencesFrom boardMoved' piece nextPos
+           return (pos : rest)
+
 
 -- Valid jumps from a position: sliding jumps only for kings, normal pieces jump two steps
-validJumpsFrom :: [[Char]] -> Char -> (Int, Int) -> [(Int, Int)]
 validJumpsFrom board piece pos
-  | piece == 'W' || piece == 'B' = filter canJumpOver immediateJumps
+  | piece == 'W' || piece == 'B' = concatMap (flyingJumpsInDirection board piece pos) directions
   | piece == 'w' || piece == 'b' = filter canJumpOver immediateJumps
   | otherwise = []
   where
@@ -147,7 +152,9 @@ validJumpsFrom board piece pos
       opponentPiece (boardPiece board (middle pos dest)) piece
 
 
+
 -- Flying jump for kings: scan diagonally for one opponent piece, then empty squares beyond it
+
 flyingJumpsInDirection :: [[Char]] -> Char -> (Int, Int) -> (Int, Int) -> [(Int, Int)]
 flyingJumpsInDirection board player (r, c) (dr, dc) = search (r + dr, c + dc) Nothing []
   where
@@ -162,6 +169,8 @@ flyingJumpsInDirection board player (r, c) (dr, dc) = search (r + dr, c + dc) No
             pieceAtPos
               | opponentPiece pieceAtPos player && maybeOpponent == Nothing -> search (rr + dr, cc + dc) (Just pos) foundSquares
               | otherwise -> []
+
+
 
 
 -- Simple diagonal moves: kings slide any number of squares; men only one step forward
