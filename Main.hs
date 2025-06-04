@@ -5,36 +5,20 @@ import qualified Board
 import qualified AI
 import System.IO (hFlush, stdout)
 
-initialBoard :: [[Char]]
-initialBoard =
-    [ ['.', 'b', '.', 'b', '.', 'b', '.', 'b']  -- Row 1
-    , ['b', '.', 'b', '.', 'b', '.', 'b', '.']  -- Row 2
-    , ['.', 'b', '.', 'b', '.', 'b', '.', 'b']  -- Row 3
-    , ['.', '.', '.', '.', '.', '.', '.', '.']  -- Row 4
-    , ['.', '.', '.', '.', '.', '.', '.', '.']  -- Row 5
-    , ['w', '.', 'w', '.', 'w', '.', 'w', '.']  -- Row 6
-    , ['.', 'w', '.', 'w', '.', 'w', '.', 'w']  -- Row 7
-    , ['w', '.', 'w', '.', 'w', '.', 'w', '.']  -- Row 8
-    ]
+---------------------------------------------------------------------------
+----                             GAME LOOP                             ----
+---------------------------------------------------------------------------
 
-clearScreen :: IO ()
-clearScreen = putStr "\ESC[2J\ESC[H"
+main :: IO ()
+main = do
+    clearScreen
+    depth <- chooseDifficulty
+    clearScreen
+    gameLoop depth initialBoard
 
-printMoves :: [[Char]] -> IO ()
-printMoves board = do
-    let moves = Board.possibleMoves board 'w'
-    mapM_ (putStrLn . formatMove) moves
 
-formatMove :: ((Int, Int), (Int, Int)) -> String
-formatMove ((r1,c1),(r2,c2)) = coordToStr (r1,c1) ++ " -> " ++ coordToStr (r2,c2)
-
-coordToStr :: (Int, Int) -> String
-coordToStr (r,c) = toEnum (c + fromEnum 'A') : show (r + 1)
-
--- GAME LOOP with AI depth parameter
 gameLoop :: Int -> [[Char]] -> IO ()
 gameLoop depth board = do
-    -- Check if player (white) has moves
     let playerMoves = Board.possibleMoves board 'w'
     if null playerMoves
         then do
@@ -59,7 +43,6 @@ gameLoop depth board = do
                     then do
                         clearScreen
                         let newBoard = Board.applyMove board positions
-                        -- Check if AI has moves
                         let aiMoves = Board.possibleMoves newBoard 'b'
                         if null aiMoves
                             then do
@@ -74,7 +57,11 @@ gameLoop depth board = do
                         putStrLn "Invalid move, try again."
                         gameLoop depth board
 
--- Entry screen for difficulty selection
+
+---------------------------------------------------------------------------
+----                            MENU OPTIONS                           ----
+---------------------------------------------------------------------------
+
 chooseDifficulty :: IO Int
 chooseDifficulty = do
     putStrLn "Welcome to Minimax Haskell Checkers!"
@@ -96,9 +83,32 @@ chooseDifficulty = do
     putStrLn $ "Starting game at depth " ++ show depth ++ "...\n"
     return depth
 
-main :: IO ()
-main = do
-    clearScreen
-    depth <- chooseDifficulty
-    clearScreen
-    gameLoop depth initialBoard
+---------------------------------------------------------------------------
+----                             UTILITIES                             ----
+---------------------------------------------------------------------------
+
+initialBoard :: [[Char]]
+initialBoard =
+    [ ['.', 'b', '.', 'b', '.', 'b', '.', 'b']
+    , ['b', '.', 'b', '.', 'b', '.', 'b', '.']
+    , ['.', 'b', '.', 'b', '.', 'b', '.', 'b']
+    , ['.', '.', '.', '.', '.', '.', '.', '.']
+    , ['.', '.', '.', '.', '.', '.', '.', '.']
+    , ['w', '.', 'w', '.', 'w', '.', 'w', '.']
+    , ['.', 'w', '.', 'w', '.', 'w', '.', 'w']
+    , ['w', '.', 'w', '.', 'w', '.', 'w', '.']
+    ]
+
+clearScreen :: IO ()
+clearScreen = putStr "\ESC[2J\ESC[H"
+
+printMoves :: [[Char]] -> IO ()
+printMoves board = do
+    let moves = Board.possibleMoves board 'w'
+    mapM_ (putStrLn . formatMove) moves
+
+formatMove :: ((Int, Int), (Int, Int)) -> String
+formatMove ((r1,c1),(r2,c2)) = coordToStr (r1,c1) ++ " -> " ++ coordToStr (r2,c2)
+
+coordToStr :: (Int, Int) -> String
+coordToStr (r,c) = toEnum (c + fromEnum 'A') : show (r + 1)

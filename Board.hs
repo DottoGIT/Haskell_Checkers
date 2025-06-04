@@ -6,14 +6,13 @@ import Data.List (find, nubBy, maximumBy)
 import Data.Ord (comparing)
 import qualified Data.Set as Set
 
--- Type alias for a jump path and its captured positions
-type JumpPath = ([(Int, Int)], [(Int, Int)])
+---------------------------------------------------------------------------
+----                          PARSING INPUT                             ----
+---------------------------------------------------------------------------
 
--- Parses input like "A3 B4" or "A3 C5 E3" into list of coordinates
 parseMove :: String -> Maybe [(Int, Int)]
 parseMove input = mapM parseCoord (words input)
 
--- Parses single coordinate like "A3" -> (2,0)
 parseCoord :: String -> Maybe (Int, Int)
 parseCoord [colChar, rowChar]
     | col >= 0 && col < 8 && row >= 0 && row < 8 = Just (row, col)
@@ -22,6 +21,10 @@ parseCoord [colChar, rowChar]
     col = ord (toUpper colChar) - ord 'A'
     row = ord rowChar - ord '1'
 parseCoord _ = Nothing
+
+---------------------------------------------------------------------------
+----                           MOVE VALIDATION                          ----
+---------------------------------------------------------------------------
 
 isValidMove :: [[Char]] -> [(Int, Int)] -> Bool
 isValidMove _ [] = False
@@ -34,6 +37,10 @@ isValidMove board [start, end] =
        then any (\(path, _) -> head path == start && last path == end && length path > 1) jumps
        else end `elem` simpleMovesFrom board piece start
 isValidMove _ _ = False
+
+---------------------------------------------------------------------------
+----                            APPLYING MOVES                          ----
+---------------------------------------------------------------------------
 
 applyMove :: [[Char]] -> [(Int, Int)] -> [[Char]]
 applyMove board [] = board
@@ -64,7 +71,10 @@ applyMove board _ = board
 isJump :: (Int, Int) -> (Int, Int) -> Bool
 isJump (r1, c1) (r2, c2) = abs (r2 - r1) == 2 && abs (c2 - c1) == 2
 
--- Recursively find all jump sequences from position, with captured pieces
+---------------------------------------------------------------------------
+----                     JUMP SEQUENCE GENERATION                      ----
+---------------------------------------------------------------------------
+
 jumpSequencesFrom :: [[Char]] -> Char -> (Int, Int) -> [JumpPath]
 jumpSequencesFrom board piece pos
   | piece == 'W' || piece == 'B' =
@@ -116,6 +126,10 @@ findJumpedPiece board player (r1, c1) (r2, c2) =
        [pos] -> Just pos
        _     -> Nothing
 
+---------------------------------------------------------------------------
+----                          MOVE GENERATION                          ----
+---------------------------------------------------------------------------
+
 validJumpsFrom :: [[Char]] -> Char -> (Int, Int) -> [(Int, Int)]
 validJumpsFrom board piece pos
   | piece == 'W' || piece == 'B' = concatMap (flyingJumpsInDirection board piece pos) directions
@@ -143,16 +157,10 @@ flyingJumpsInDirection board player (r, c) (dr, dc) = search (r + dr, c + dc) No
                   search (rr + dr, cc + dc) (Just pos)
               | otherwise -> []
 
-promoteIfNeeded :: Char -> (Int, Int) -> Char
-promoteIfNeeded 'w' (0, _) = 'W'
-promoteIfNeeded 'b' (7, _) = 'B'
-promoteIfNeeded piece _   = piece
-
 simpleMovesFrom :: [[Char]] -> Char -> (Int, Int) -> [(Int, Int)]
 simpleMovesFrom board piece pos =
     filter (\p -> boardPiece board p == '.') (potentialSimpleMoves board pos piece)
 
--- Get potential simple moves
 potentialSimpleMoves :: [[Char]] -> (Int, Int) -> Char -> [(Int, Int)]
 potentialSimpleMoves board (r, c) piece
   | piece == 'W' || piece == 'B' = concatMap (slideMoves board (r, c)) directions
@@ -170,7 +178,7 @@ potentialSimpleMoves board (r, c) piece
 
 possibleMoves :: [[Char]] -> Char -> [((Int, Int), (Int, Int))]
 possibleMoves board player =
-    concatMap (\(from, tos) -> map (\to -> (from, to)) tos) (possibleMovesDetailed board player)
+    concatMap (\(from, tos) -> map (from,) tos) (possibleMovesDetailed board player)
 
 possibleMovesDetailed :: [[Char]] -> Char -> [((Int, Int), [(Int, Int)])]
 possibleMovesDetailed board player =
@@ -189,6 +197,12 @@ possibleMovesDetailed board player =
        then filteredJumps
        else [ (pos, simpleMovesFrom board (boardPiece board pos) pos) | pos <- playerPositions ]
 
+---------------------------------------------------------------------------
+----                          UTILITY FUNCTIONS                         ----
+---------------------------------------------------------------------------
+
+type JumpPath = ([(Int, Int)], [(Int, Int)])
+
 boardPiece :: [[Char]] -> (Int, Int) -> Char
 boardPiece board (r, c) = board !! r !! c
 
@@ -203,6 +217,11 @@ removePiece board pos = setPiece board pos '.'
 
 middle :: (Int, Int) -> (Int, Int) -> (Int, Int)
 middle (r1, c1) (r2, c2) = ((r1 + r2) `div` 2, (c1 + c2) `div` 2)
+
+promoteIfNeeded :: Char -> (Int, Int) -> Char
+promoteIfNeeded 'w' (0, _) = 'W'
+promoteIfNeeded 'b' (7, _) = 'B'
+promoteIfNeeded piece _   = piece
 
 opponentPiece :: Char -> Char -> Bool
 opponentPiece piece player
